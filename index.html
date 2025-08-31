@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Language Detection Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" onload="this.onload=null;" onerror="console.warn('Failed to load Google Fonts')">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" onload="this.onload=null;" onerror="console.warn('Failed to load Font Awesome')">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: clamp(15px, 5vw, 20px);
+            flex-grow: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: clamp(20px, 5vw, 40px);
+            color: white;
+        }
+
+        .header h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(15px, 5vw, 30px);
+            margin-bottom: 40px;
+        }
+
+        .detection-panel, .samples-panel {
+            background: white;
+            border-radius: 15px;
+            padding: clamp(15px, 5vw, 25px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .text-input {
+            width: 100%;
+            padding: clamp(10px, 3vw, 15px);
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: clamp(14px, 2.5vw, 16px);
+            background: #f8f9fa;
+            resize: vertical;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .detect-btn {
+            width: 100%;
+            padding: clamp(10px, 3vw, 15px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: clamp(14px, 2.5vw, 16px);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .detect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .detect-btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .result-value {
+            font-weight: 500;
+            color: #212529;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 1s ease;
+        }
+
+        .samples-title {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .samples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .sample-card {
+            background: #f8f9fa;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .sample-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .sample-text {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .sample-language {
+            font-size: clamp(0.8rem, 2vw, 0.9rem);
+            color: #6c757d;
+        }
+
+        .sample-description {
+            font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+            color: #adb5bd;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: clamp(30px, 8vw, 40px);
+            height: clamp(30px, 8vw, 40px);
+            border: 4px solid #f3f3f3;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #f5c6cb;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .detection-panel, .samples-panel {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .detect-btn, .text-input {
+                padding: clamp(8px, 2.5vw, 12px);
+            }
+            .samples-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-language"></i> Language Detector</h1>
+            <p>Detect Indian languages using advanced AI technology</p>
+        </div>
+
+        <div class="main-content">
+            <div class="detection-panel">
+                <div class="input-section">
+                    <div class="input-group">
+                        <label for="textInput">Enter Text</label>
+                        <textarea 
+                            class="text-input" 
+                            id="textInput" 
+                            placeholder="Enter text to detect language..."
+                            rows="4"
+                            aria-describedby="textInputHelp"
+                        ></textarea>
+                        <small id="textInputHelp" class="form-text text-muted">Enter text to detect its language. Press Ctrl+Enter to submit.</small>
+                    </div>
+                    <button class="detect-btn" id="detectBtn" aria-label="Detect Language">
+                        <i class="fas fa-search"></i> Detect Language
+                    </button>
+                </div>
+                <div class="result-section" id="resultSection">
+                    <div class="result-item">
+                        <span class="result-label">Detected Language:</span>
+                        <span class="result-value" id="detectedLanguage">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Confidence:</span>
+                        <span class="result-value" id="confidenceValue">-</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceBar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="samples-panel">
+                <h3 class="samples-title">
+                    <i class="fas fa-lightbulb"></i> Sample Texts
+                </h3>
+                <div class="samples-grid" id="samplesGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LanguageDetector {
+            constructor() {
+                // Update this to match your backend URL
+                this.apiUrl = 'http://localhost:5000/api'; // Change to your backend URL if different
+                this.fallbackSamples = [
+                    { text: "नमस्ते", language: "Hindi", description: "Greeting" },
+                    { text: "வணக்கம்", language: "Tamil", description: "Greeting" }
+                ];
+                this.init();
+            }
+
+            init() {
+                try {
+                    this.bindEvents();
+                    this.loadSamples();
+                } catch (error) {
+                    console.error('Initialization failed:', error);
+                    this.showError('Failed to initialize the application. Please refresh the page.');
+                }
+            }
+
+            bindEvents() {
+                const detectBtn = document.getElementById('detectBtn');
+                const textInput = document.getElementById('textInput');
+                const samplesGrid = document.getElementById('samplesGrid');
+                if (!detectBtn || !textInput || !samplesGrid) {
+                    throw new Error('Required DOM elements are missing');
+                }
+                detectBtn.addEventListener('click', () => this.detectLanguage());
+                textInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                        this.detectLanguage();
+                    }
+                });
+                samplesGrid.addEventListener('click', (e) => {
+                    const sampleCard = e.target.closest('.sample-card');
+                    if (sampleCard) {
+                        const text = sampleCard.querySelector('.sample-text').textContent;
+                        this.useSample(text);
+                    }
+                });
+            }
+
+            async loadSamples() {
+                try {
+                    // Check if we're running from file:// protocol
+                    if (window.location.protocol === 'file:') {
+                        throw new Error('Cannot make API calls from file:// protocol. Please use a local server.');
+                    }
+                    const response = await fetch(`${this.apiUrl}/samples`, { signal: AbortSignal.timeout(5000) });
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                    const samples = await response.json();
+                    if (!Array.isArray(samples)) throw new Error('Invalid samples format');
+                    this.renderSamples(samples);
+                } catch (error) {
+                    console.error('Error loading samples:', error);
+                    this.showError(`Failed to load samples: ${error.message}. Using fallback data.`);
+                    this.renderSamples(this.fallbackSamples);
+                }
+            }
+
+            renderSamples(samples) {
+                const grid = document.getElementById('samplesGrid');
+                grid.innerHTML = samples.map(sample => `
+                    <div class="sample-card" role="button" aria-label="Use sample text: ${sample.text || 'Unknown'}">
+                        <div class="sample-text">${sample.text || 'Unknown'}</div>
+                        <div class="sample-language">${sample.language || 'Unknown'}</div>
+                        <div class="sample-description">${sample.description || 'No description'}</div>
+                    </div>
+                `).join('');
+            }
+
+            useSample(text) {
+                document.getElementById('textInput').value = text;
+                this.detectLanguage();
+            }
+
+            async detectLanguage() {
+                const text = document.getElementById('textInput').value.trim();
+                if (!text) {
+                    this.showError('Please enter some text to detect.');
+                    return;
+                }
+                this.setLoading(true);
+                this.hideResult();
+                try {
+                    if (window.location.protocol === 'file:') {
+                        throw new Error('Cannot make API calls from file:// protocol. Please use a local server.');
+                    }
+                    const response = await fetch(`${this.apiUrl}/detect`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text }),
+                        signal: AbortSignal.timeout(5000)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+                    const result = await response.json();
+                    if (!result.language || typeof result.confidence_percentage !== 'number') {
+                        throw new Error('Invalid response format');
+                    }
+                    this.showResult(result);
+                } catch (error) {
+                    console.error('Detection error:', error);
+                    this.showError(`Failed to detect language: ${error.message}. Please check the server or use a local server.`);
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            showResult(result) {
+                const detectedLanguage = document.getElementById('detectedLanguage');
+                const confidenceValue = document.getElementById('confidenceValue');
+                const confidenceBar = document.getElementById('confidenceBar');
+                const resultSection = document.getElementById('resultSection');
+
+                detectedLanguage.textContent = result.language || 'Unknown';
+                confidenceValue.textContent = `${(result.confidence_percentage || 0).toFixed(2)}%`;
+                confidenceBar.style.width = `${result.confidence_percentage || 0}%`;
+
+                resultSection.classList.add('show');
+            }
+
+            hideResult() {
+                const resultSection = document.getElementById('resultSection');
+                resultSection.classList.remove('show');
+            }
+
+            showError(message) {
+                const resultSection = document.getElementById('resultSection');
+                resultSection.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i> ${message}
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Detected Language:</span>
+                        <span class="result-value" id="detectedLanguage">-</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Confidence:</span>
+                        <span class="result-value" id="confidenceValue">-</span>
+                    </div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="confidenceBar" style="width: 0%;"></div>
+                    </div>
+                `;
+                resultSection.classList.add('show');
+            }
+
+            setLoading(loading) {
+                const btn = document.getElementById('detectBtn');
+                const overlay = document.getElementById('loadingOverlay');
+                btn.classList.toggle('loading', loading);
+                btn.innerHTML = loading ? 'Detecting...' : '<i class="fas fa-search"></i> Detect Language';
+                overlay.style.display = loading ? 'flex' : 'none';
+            }
+        }
+
+        try {
+            const detector = new LanguageDetector();
+        } catch (error) {
+            console.error('Failed to initialize LanguageDetector:', error);
+            const resultSection = document.getElementById('resultSection');
+            if (resultSection) {
+                resultSection.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i> Application initialization failed: ${error.message}
+                    </div>
+                `;
+                resultSection.classList.add('show');
+            }
+        }
+    </script>
+</body>
+</html>
